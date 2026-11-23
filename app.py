@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
 
-# 1. 페이지 기본 설정
+# 1. 와이드 레이아웃 설정
 st.set_page_config(page_title="유압 압력장치 시뮬레이터", page_icon="⚙️", layout="wide")
 
-# 고대비 깔끔한 CSS (들여쓰기 없이 작성하여 마크다운 충돌 방지)
+# 깔끔하고 선명한 고대비 CSS
 st.markdown("""
 <style>
 .metric-card {
@@ -28,7 +28,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 2. 함수 정의 (0으로 나누기 방지 포함)
+# 2. 함수 정의 (파스칼의 원리 계산)
 def caculate_p(area1, area2, force1):
     if area1 <= 0:
         area1 = 1.0
@@ -58,73 +58,79 @@ pressure, force2, ratio = caculate_p(area1, area2, force1)
 # 4. 메인 화면
 st.title("⚙️ 유압 압력장치 힘 계산 및 비교 프로그램")
 
-top_left, top_right = st.columns([1.35, 1])
+top_left, top_right = st.columns([1.4, 1])
 
 with top_left:
     st.subheader("📐 실시간 피스톤 작동 모습")
     
-    # 힘에 따른 피스톤 이동 및 화살표 굵기 계산
-    shift = (force1 / 100.0) * 40.0
-    piston1_y = 95.0 + shift
-    piston2_y = 135.0 - shift
+    # 힘(force1)에 따른 피스톤 이동 거리 계산
+    # 작은 피스톤(왼쪽)은 최대 55px 아래로 내려감
+    shift1 = (force1 / 100.0) * 55.0
     
-    arrow1_width = 3.0 + (force1 / 100.0) * 4.0
-    arrow2_width = min(4.0 + (ratio / 15.0) * 5.0, 10.0)
-    anim_speed = max(2.2 - (force1 / 100.0) * 1.5, 0.4)
+    # 큰 피스톤(오른쪽)은 면적 비율(부피 보존)에 따라 올라가되, 시각적으로 움직임이 잘 보이도록 보정
+    raw_shift2 = shift1 * (area1 / area2)
+    shift2 = max(min(raw_shift2 * 2.5, 45.0), (force1 / 100.0) * 12.0)
 
-    # SVG 코드 (들여쓰기 제거하여 렌더링 오류 완벽 차단)
+    # 기준 Y좌표 (위쪽 여백을 넉넉히 두어 텍스트가 절대 겹치지 않음)
+    base_y1 = 115.0
+    base_y2 = 155.0
+    
+    piston1_y = base_y1 + shift1   # 아래로 내려감
+    piston2_y = base_y2 - shift2   # 위로 올라감
+
+    # 깔끔하고 정돈된 기계 도면 스타일 SVG
     piston_svg = f"""
 <div style="background-color: #ffffff; border: 2px solid #cbd5e1; border-radius: 10px; padding: 12px; text-align: center;">
-<svg width="100%" height="320" viewBox="0 0 560 320" xmlns="http://www.w3.org/2000/svg">
+<svg width="100%" height="340" viewBox="0 0 640 340" xmlns="http://www.w3.org/2000/svg">
 <style>
-@keyframes flowRight {{
-  0% {{ transform: translateX(-12px); opacity: 0.3; }}
-  50% {{ opacity: 1; }}
-  100% {{ transform: translateX(12px); opacity: 0.3; }}
+.smooth-move {{
+  transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
 }}
-@keyframes pulseForce {{
-  0%, 100% {{ transform: translateY(0px); }}
-  50% {{ transform: translateY(-4px); }}
-}}
-.fluid-flow {{ animation: flowRight {anim_speed}s infinite ease-in-out; }}
-.force-up {{ animation: pulseForce 1s infinite ease-in-out; }}
 </style>
 
-<rect x="65" y="10" width="110" height="26" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
-<text x="120" y="28" font-family="sans-serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#0369a1">면적 A₁: {area1} cm²</text>
+<!-- [고정 텍스트] 왼쪽 피스톤 옆에 가만히 있는 면적 설명 -->
+<text x="125" y="185" font-family="sans-serif" font-size="13" font-weight="bold" text-anchor="end" fill="#334155">작은 피스톤</text>
+<text x="125" y="205" font-family="sans-serif" font-size="14" font-weight="bold" text-anchor="end" fill="#0284c7">면적 A₁ = {area1} cm²</text>
+<line x1="132" y1="192" x2="148" y2="192" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3,3"/>
 
-<rect x="325" y="10" width="120" height="26" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
-<text x="385" y="28" font-family="sans-serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#0369a1">면적 A₂: {area2} cm²</text>
+<!-- [고정 텍스트] 오른쪽 피스톤 옆에 가만히 있는 면적 설명 -->
+<text x="515" y="185" font-family="sans-serif" font-size="13" font-weight="bold" text-anchor="start" fill="#334155">큰 피스톤</text>
+<text x="515" y="205" font-family="sans-serif" font-size="14" font-weight="bold" text-anchor="start" fill="#0284c7">면적 A₂ = {area2} cm²</text>
+<line x1="492" y1="192" x2="508" y2="192" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3,3"/>
 
-<path d="M 75 80 L 75 275 L 480 275 L 480 80" fill="none" stroke="#1e293b" stroke-width="3.5" stroke-linecap="round"/>
-<path d="M 165 80 L 165 215 L 290 215 L 290 80" fill="none" stroke="#1e293b" stroke-width="3.5" stroke-linecap="round"/>
+<!-- 실린더 외벽 (고정) -->
+<path d="M 150 95 L 150 285 L 490 285 L 490 95" fill="none" stroke="#1e293b" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M 230 95 L 230 225 L 330 225 L 330 95" fill="none" stroke="#1e293b" stroke-width="3.5" stroke-linecap="round"/>
 
-<path d="M 76.8 {piston1_y + 18} L 163.2 {piston1_y + 18} L 163.2 216.8 L 291.8 216.8 L 291.8 {piston2_y + 18} L 478.2 {piston2_y + 18} L 478.2 273.2 L 76.8 273.2 Z" fill="#bae6fd"/>
+<!-- 유압유 (피스톤 움직임에 맞춰 높이 변화) -->
+<path class="smooth-move" d="M 151.8 {piston1_y + 18} L 228.2 {piston1_y + 18} L 228.2 226.8 L 331.8 226.8 L 331.8 {piston2_y + 18} L 488.2 {piston2_y + 18} L 488.2 283.2 L 151.8 283.2 Z" fill="#dbeafe"/>
 
-<g class="fluid-flow">
-  <text x="120" y="248" font-family="sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#0284c7">⬇</text>
-  <text x="230" y="250" font-family="sans-serif" font-size="15" font-weight="bold" text-anchor="middle" fill="#0284c7">➔ ➔ ➔</text>
-  <text x="385" y="248" font-family="sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#0284c7">⬆</text>
+<!-- [움직이는 그룹 1] 작은 피스톤 + 누르는 힘 화살표 + 힘 텍스트 -->
+<g class="smooth-move">
+  <!-- 피스톤 헤드 및 로드 -->
+  <rect x="151.8" y="{piston1_y}" width="76.4" height="18" rx="2" fill="#334155"/>
+  <rect x="184" y="{piston1_y - 30}" width="12" height="30" fill="#64748b"/>
+  <!-- 아래로 누르는 화살표 -->
+  <line x1="190" y1="{piston1_y - 62}" x2="190" y2="{piston1_y - 38}" stroke="#dc2626" stroke-width="4" stroke-linecap="round"/>
+  <polygon points="183,{piston1_y - 42} 197,{piston1_y - 42} 190,{piston1_y - 31}" fill="#dc2626"/>
+  <!-- 피스톤을 따라 움직이는 힘 텍스트 -->
+  <text x="190" y="{piston1_y - 70}" font-family="sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#dc2626">↓ 누르는 힘 {force1} N</text>
 </g>
 
-<rect x="76.8" y="{piston1_y}" width="86.4" height="18" rx="2" fill="#334155"/>
-<rect x="114" y="{piston1_y - 28}" width="12" height="28" fill="#64748b"/>
-
-<line x1="120" y1="{piston1_y - 54}" x2="120" y2="{piston1_y - 34}" stroke="#dc2626" stroke-width="{arrow1_width}" stroke-linecap="round"/>
-<polygon points="112,{piston1_y - 38} 128,{piston1_y - 38} 120,{piston1_y - 27}" fill="#dc2626"/>
-<text x="120" y="{piston1_y - 60}" font-family="sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#dc2626">↓ 누르는 힘 {force1} N</text>
-
-<rect x="291.8" y="{piston2_y}" width="186.4" height="18" rx="2" fill="#334155"/>
-<rect x="377" y="{piston2_y - 28}" width="16" height="28" fill="#64748b"/>
-
-<g class="force-up">
-  <line x1="385" y1="{piston2_y - 32}" x2="385" y2="{piston2_y - 56}" stroke="#059669" stroke-width="{arrow2_width}" stroke-linecap="round"/>
-  <polygon points="375,{piston2_y - 50} 395,{piston2_y - 50} 385,{piston2_y - 64}" fill="#059669"/>
-  <text x="385" y="{piston2_y - 70}" font-family="sans-serif" font-size="15" font-weight="bold" text-anchor="middle" fill="#059669">↑ 출력 힘 {force2:.1f} N</text>
+<!-- [움직이는 그룹 2] 큰 피스톤 + 출력 힘 화살표 + 힘 텍스트 -->
+<g class="smooth-move">
+  <!-- 피스톤 헤드 및 로드 -->
+  <rect x="331.8" y="{piston2_y}" width="156.4" height="18" rx="2" fill="#334155"/>
+  <rect x="402" y="{piston2_y - 30}" width="16" height="30" fill="#64748b"/>
+  <!-- 위로 밀어 올리는 화살표 -->
+  <line x1="410" y1="{piston2_y - 35}" x2="410" y2="{piston2_y - 60}" stroke="#059669" stroke-width="4" stroke-linecap="round"/>
+  <polygon points="403,{piston2_y - 55} 417,{piston2_y - 55} 410,{piston2_y - 67}" fill="#059669"/>
+  <!-- 피스톤을 따라 움직이는 힘 텍스트 -->
+  <text x="410" y="{piston2_y - 75}" font-family="sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#059669">↑ 출력 힘 {force2:.1f} N</text>
 </g>
 
-<rect x="175" y="285" width="210" height="24" rx="5" fill="#f1f5f9"/>
-<text x="280" y="302" font-family="sans-serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#0f172a">전달 압력 P = {pressure:.2f} N/cm²</text>
+<!-- 하단 유체 압력 표기 (고정) -->
+<text x="320" y="260" font-family="sans-serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#1e40af">유압 전달 압력 P = {pressure:.2f} N/cm²</text>
 </svg>
 </div>
 """
